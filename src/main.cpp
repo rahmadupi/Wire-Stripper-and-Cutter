@@ -114,7 +114,7 @@ void setup() {
     pinMode(PIN_ENCODER_BT, INPUT_PULLUP);
     pinMode(PIN_BUTTON_A, INPUT_PULLUP);
 
-        if (!SPIFFS.begin(true)) {
+    if (!SPIFFS.begin(true)) {
         Serial.println("SPIFFS Mount Failed");
         return;
     }
