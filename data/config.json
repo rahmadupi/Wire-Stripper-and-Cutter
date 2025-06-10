@@ -1,0 +1,29 @@
+{
+  "config_length": 3,
+  "config": [
+    {
+      "type": 1,
+      "quantity": 1,
+      "thickness": 1,
+      "length": 1,
+      "front": 1,
+      "back": 1
+    },
+    {
+      "type": 1,
+      "quantity": 1,
+      "thickness": 1,
+      "length": 1,
+      "front": 1,
+      "back": 1
+    },
+    {
+      "type": 1,
+      "quantity": 1,
+      "thickness": 1,
+      "length": 1,
+      "front": 1,
+      "back": 1
+    }
+  ]
+}

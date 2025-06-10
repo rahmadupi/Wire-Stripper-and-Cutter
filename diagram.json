@@ -1,0 +1,148 @@
+{
+  "version": 1,
+  "author": "Rahmad B",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": 134.4,
+      "left": -71.96,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-ky-040",
+      "id": "encoder1",
+      "top": 59.3,
+      "left": -327.2,
+      "attrs": {}
+    },
+    {
+      "type": "board-ssd1306",
+      "id": "oled1",
+      "top": 271.94,
+      "left": -306.97,
+      "attrs": {
+        "i2cAddress": "0x3c"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn1",
+      "top": 6.2,
+      "left": -134.4,
+      "attrs": {
+        "color": "green",
+        "xray": "1"
+      }
+    }
+  ],
+  "connections": [
+    [
+      "esp:TX",
+      "$serialMonitor:RX",
+      "",
+      []
+    ],
+    [
+      "esp:RX",
+      "$serialMonitor:TX",
+      "",
+      []
+    ],
+    [
+      "encoder1:GND",
+      "esp:GND.2",
+      "black",
+      [
+        "h0"
+      ]
+    ],
+    [
+      "encoder1:SW",
+      "esp:4",
+      "green",
+      [
+        "h163.2",
+        "v240.1"
+      ]
+    ],
+    [
+      "encoder1:VCC",
+      "esp:5V",
+      "red",
+      [
+        "v144.4",
+        "h9.45"
+      ]
+    ],
+    [
+      "encoder1:CLK",
+      "esp:16",
+      "green",
+      [
+        "h201.6",
+        "v249.6"
+      ]
+    ],
+    [
+      "encoder1:DT",
+      "esp:17",
+      "green",
+      [
+        "h182.4",
+        "v230.5"
+      ]
+    ],
+    [
+      "oled1:SDA",
+      "esp:21",
+      "green",
+      [
+        "v0"
+      ]
+    ],
+    [
+      "oled1:SCL",
+      "esp:22",
+      "green",
+      [
+        "v0"
+      ]
+    ],
+    [
+      "oled1:VCC",
+      "esp:5V",
+      "red",
+      [
+        "h86.55",
+        "v57.6"
+      ]
+    ],
+    [
+      "oled1:GND",
+      "esp:GND.2",
+      "black",
+      [
+        "v0"
+      ]
+    ],
+    [
+      "btn1:2.r",
+      "esp:32",
+      "green",
+      [
+        "h0"
+      ]
+    ],
+    [
+      "btn1:1.l",
+      "esp:GND.2",
+      "green",
+      [
+        "h0"
+      ]
+    ]
+  ],
+  "dependencies": {}
+}
