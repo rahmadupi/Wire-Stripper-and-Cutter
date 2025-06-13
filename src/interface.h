@@ -10,7 +10,6 @@
 #define PIN_ENCODER_CLK 17
 #define PIN_ENCODER_DT 16
 #define PIN_ENCODER_BT 4
-#define PIN_BUTTON_A 10
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -52,6 +51,7 @@ int cable_configuration(crimp_configuration_t *crimp_configuration);
 int strip_cut_configuration(crimp_configuration_t *crimp_configuration);
 /* Processing */
 int processing_display(int state);
+int test_motor_display(int motor_type, int steps);
 
 /* Animation */
 void gear(int x_pos, int y_pos, int width, int height, int time);

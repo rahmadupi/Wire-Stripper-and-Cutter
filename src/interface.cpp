@@ -10,11 +10,11 @@ BUTTON read_button() {
         rotary_clk_state = temp_rotary_clk_state;
         int dt_value = digitalRead(PIN_ENCODER_DT);
         if (temp_rotary_clk_state == LOW && dt_value == HIGH) {
-            Serial.println("[INPUT] Putar Kiri");
+            // Serial.println("[INPUT] Putar Kiri");
             return ROTARY_LEFT;
         }
         if (temp_rotary_clk_state == LOW && dt_value == LOW) {
-            Serial.println("[INPUT] Putar Kanan");
+            // Serial.println("[INPUT] Putar Kanan");
             return ROTARY_RIGHT;
         }
     }
@@ -22,24 +22,24 @@ BUTTON read_button() {
         int low_millis = millis();
         while (digitalRead(PIN_ENCODER_BT) == LOW) {
             if (millis() - low_millis > 1000) {
-                Serial.println("[INPUT] Tombol Putar Panjang");
+                // Serial.println("[INPUT] Tombol Putar Panjang");
                 return LONG_ROTARY_BUTTON;
             }
         }
-        Serial.println("[INPUT] Tombol Putar");
+        // Serial.println("[INPUT] Tombol Putar");
         return ROTARY_BUTTON;
     }
-    if (digitalRead(PIN_BUTTON_A) == LOW) {
-        int low_millis = millis();
-        while (digitalRead(PIN_BUTTON_A) == LOW) {
-            if (millis() - low_millis > 1000) {
-                Serial.println("[INPUT] Tombol A Panjang");
-                return LONG_BUTTON_A;
-            }
-        }
-        Serial.println("[INPUT] Tombol A");
-        return BUTTON_A;
-    }
+    // if (digitalRead(PIN_BUTTON_A) == LOW) {
+    //     int low_millis = millis();
+    //     while (digitalRead(PIN_BUTTON_A) == LOW) {
+    //         if (millis() - low_millis > 1000) {
+    //             Serial.println("[INPUT] Tombol A Panjang");
+    //             return LONG_BUTTON_A;
+    //         }
+    //     }
+    //     Serial.println("[INPUT] Tombol A");
+    //     return BUTTON_A;
+    // }
     return NONE;
 }
 
@@ -164,6 +164,7 @@ int home(crimp_configuration_t *history, int history_length) {
             // Serial.println(selected_config.back_end_crimp_length);
             return selection;  // Return success
         } else if (button == LONG_ROTARY_BUTTON) {
+            return 2;
         }
     } while (true);
 }
@@ -517,4 +518,40 @@ int processing_display(int state) {
         frame = 0;
     }
     return frame;
+}
+
+int test_motor_display(int motor_type, int steps) {
+    BUTTON button;
+    oled.clearDisplay();
+    oled.setTextSize(1);
+    oled.drawRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, WHITE);
+    oled.setTextColor(WHITE);
+    oled.setCursor(11, 3);
+    oled.println("--- Test Motor ---");
+    oled.drawRect(0, 12, SCREEN_WIDTH, 2, WHITE);
+    oled.setCursor(4, 18);
+    if (motor_type == 0) {
+        oled.println("Motor Type: Cutter");
+    } else if (motor_type == 1) {
+        oled.println("Motor Type: Selector");
+    } else if (motor_type == 2) {
+        oled.println("Motor Type: Feeder");
+    }
+    oled.setCursor(4, 32);
+    String text;
+    if (motor_type == 1) {
+        text = "Selector Position: " + String(steps);
+    } else if (motor_type == 0) {
+        text = "Cutter Steps: " + String(steps);
+    } else if (motor_type == 2) {
+        text = "None";
+    } else
+        text = "Steps: " + String(steps);
+    oled.println(text);
+    oled.display();
+    do {
+        button = read_button();
+        if (button) return button;
+
+    } while (true);
 }
