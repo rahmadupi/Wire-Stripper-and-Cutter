@@ -15,8 +15,8 @@
 #define PIN_PROXIMITY_SENSOR 35
 // #define PIN_CUTTER_LIMITER 32
 // #define PIN_SELECTOR_LIMITER 12
-#define PIN_JANCOK 33
-#define PIN_DANCOK 5
+#define PIN_JANCOK 5
+#define PIN_DANCOK 33
 
 #define MOTOR_STEPS 200
 
@@ -32,7 +32,7 @@ typedef enum {
 } motor_t;
 
 typedef enum {
-    CLEAR,
+    CLEAR = 0,
     LIMIT,
 } motor_state_t;
 
@@ -52,15 +52,17 @@ void motor_startup(void *pvParameters);
 void execute_command(void *pvParameters);
 
 int move_motor(motor_t motor, int steps);
-int mm_to_steps(motor_t motor, int mm);
+int mm_to_steps(motor_t motor, double mm);
 
 void reset_selector();
 void reset_cutter();
 void reset_feeder();
 
-void move_cutter(int mm);
-void move_feeder(int mm);
+void move_cutter(double mm);
+void move_feeder(double mm);
 void change_selector(int position);
+void strip_wire(double mm);
+void cut_wire();
 
 // Proximity sensor
 int check_proximity_sensor();

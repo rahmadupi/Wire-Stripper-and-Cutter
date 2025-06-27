@@ -143,23 +143,13 @@ void setup() {
     pinMode(PIN_PROXIMITY_SENSOR, INPUT);
     pinMode(PIN_JANCOK, INPUT_PULLDOWN);
     pinMode(PIN_DANCOK, INPUT_PULLDOWN);
-    // pinMode(PIN_MOTOR_CUTTER_STEP, OUTPUT);
-    // pinMode(PIN_MOTOR_CUTTER_DIR, OUTPUT);
-    // pinMode(PIN_MOTOR_SELECTOR_DIR, OUTPUT);
-    // pinMode(PIN_MOTOR_SELECTOR_STEP, OUTPUT);
-    // pinMode(PIN_MOTOR_FEEDER_STEP, OUTPUT);
-    // pinMode(PIN_MOTOR_FEEDER_DIR, OUTPUT);
+    pinMode(PIN_MOTOR_CUTTER_STEP, OUTPUT);
+    pinMode(PIN_MOTOR_CUTTER_DIR, OUTPUT);
+    pinMode(PIN_MOTOR_SELECTOR_DIR, OUTPUT);
+    pinMode(PIN_MOTOR_SELECTOR_STEP, OUTPUT);
+    pinMode(PIN_MOTOR_FEEDER_STEP, OUTPUT);
+    pinMode(PIN_MOTOR_FEEDER_DIR, OUTPUT);
     Serial.println("[+] Starting Serial...");
-
-    // attachInterrupt(digitalPinToInterrupt(PIN_JANCOK), cutter_limit, FALLING);
-    // attachInterrupt(digitalPinToInterrupt(PIN_DANCOK), selector_limit, FALLING);
-
-    for (int i = 0; i < 3; i++) {
-        delay(100);
-        digitalWrite(LED_BUILTIN, LOW);
-        delay(100);
-        digitalWrite(LED_BUILTIN, HIGH);
-    }
 
     if (!SPIFFS.begin(true)) {
         Serial.println("SPIFFS Mount Failed");
@@ -184,177 +174,152 @@ void setup() {
     Serial.println("[+] Melakukan Konfigurasi alat...");
     startup_display();
 
-    // xTaskCreate(motor_startup, "Motor Startup", 1024, NULL, 1, &motor_handle);
-    // do {
-    //     gear(48, 15, 32, 32, 5);
-    // } while (eTaskGetState(motor_handle) != eDeleted);
+    xTaskCreate(motor_startup, "Motor Startup", 1024, NULL, 1, &motor_handle);
+    do {
+        gear(48, 15, 32, 32, 5);
+    } while (eTaskGetState(motor_handle) != eDeleted);
     Serial.println("[+] Motor Startup Selesai");
     oled.clearDisplay();
     oled.display();
     load_config(&history_length, configuration_history);
     motor_handle = NULL;
-
-    // motor_feeder.move(1000);.
-    motor_cutter.move(200);
-
-    // move_motor(MOTOR_CUTTER, mm_to_steps(MOTOR_CUTTER, 10));      // Munggah cutter 10mm
-    // move_motor(MOTOR_SELECTOR, mm_to_steps(MOTOR_SELECTOR, 10));  // Munggah selector 10mm
-    // move_motor(MOTOR_FEEDER, mm_to_steps(MOTOR_FEEDER, 10));      // Munggah feeder 10mm
-
-    // xTaskCreate(additional_loop, "Additional Loop", 1024, NULL, 1, NULL);
 }
 
 void loop() {
-    motor_feeder.run();
-    motor_cutter.run();
-    // digitalWrite(LED_BUILTIN, LOW);
-    // // Home
-    // if (screen_state == 0) {
-    //     int ret = home(configuration_history, history_length);
-    //     if (ret == 0) {
-    //         screen_state = 1;
-    //     } else if (ret == 2) {
-    //         Serial.println("[+] Masuk mode test motor");
-    //         screen_state = 4;
-    //     } else {
-    //         memcpy(&crimp_configuration, &configuration_history[ret - 1], sizeof(crimp_configuration_t));
-    //         screen_state = 3;
-    //     }
-    // }
-    // // Konfigurasi Kabel
-    // if (screen_state == 1) {
-    //     int ret = cable_configuration(&crimp_configuration);
-    //     if (ret == -1)
-    //         screen_state = 0;
-    //     else
-    //         screen_state = 2;
-    //     Serial.println("[+] Konfigurasi Kabel Selesai");
-    // }
-    // // Konfigurasi Strip dan Potong
-    // else if (screen_state == 2) {
-    //     int ret = strip_cut_configuration(&crimp_configuration);
-    //     if (ret == -1)
-    //         screen_state = 1;
-    //     else
-    //         screen_state = 3;
-    //     Serial.println("[+] Konfigurasi Strip dan Potong Selesai");
+    digitalWrite(LED_BUILTIN, LOW);
+    // Home
+    if (screen_state == 0) {
+        int ret = home(configuration_history, history_length);
+        if (ret == 0) {
+            screen_state = 1;
+        } else if (ret == 2) {
+            Serial.println("[+] Masuk mode test motor");
+            screen_state = 4;
+        } else {
+            memcpy(&crimp_configuration, &configuration_history[ret - 1], sizeof(crimp_configuration_t));
+            screen_state = 3;
+        }
+    }
+    // Konfigurasi Kabel
+    if (screen_state == 1) {
+        int ret = cable_configuration(&crimp_configuration);
+        if (ret == -1)
+            screen_state = 0;
+        else
+            screen_state = 2;
+        Serial.println("[+] Konfigurasi Kabel Selesai");
+    }
+    // Konfigurasi Strip dan Potong
+    else if (screen_state == 2) {
+        int ret = strip_cut_configuration(&crimp_configuration);
+        if (ret == -1)
+            screen_state = 1;
+        else
+            screen_state = 3;
+        Serial.println("[+] Konfigurasi Strip dan Potong Selesai");
 
-    // }
-    // // Proses
-    // else if (screen_state == 3) {
-    //     Serial.println("[+] Proses dimulai");
-    //     xTaskCreate(execute_command, "Execute Command", 2048, &crimp_configuration, 1, &motor_handle);
-    //     int process_state = 0;
-    //     do {
-    //         int ret_state = processing_display(process_state);
-    //         if (ret_state == LONG_ROTARY_BUTTON) {
-    //             Serial.println("[+] Proses Dihentikan (Long Rotary Button)");
-    //             deleted_process();
-    //             if (eTaskGetState(motor_handle) != eDeleted && eTaskGetState(motor_handle) != eBlocked)
-    //                 vTaskDelete(motor_handle);
-    //             process_state = 2;
-    //             screen_state = 0;
-    //             break;
-    //         } else if (ret_state == ROTARY_BUTTON) {
-    //             if (eTaskGetState(motor_handle) == eSuspended) {
-    //                 Serial.println("[+] Proses Dilanjutkan (ROTARY_BUTTON)");
-    //                 process_state = 0;
-    //                 vTaskResume(motor_handle);
-    //                 // } else if (eTaskGetState(motor_handle) == eRunning) {
-    //             } else {
-    //                 Serial.println("[+] Proses Dijeda (ROTARY_BUTTON)");
-    //                 process_state = 1;
-    //                 vTaskSuspend(motor_handle);
-    //             }
-    //         }
+    }
+    // Proses
+    else if (screen_state == 3) {
+        Serial.println("[+] Proses dimulai");
+        xTaskCreate(execute_command, "Execute Command", 2048, &crimp_configuration, 1, &motor_handle);
+        int process_state = 0;
+        do {
+            int ret_state = processing_display(process_state);
+            if (ret_state == LONG_ROTARY_BUTTON) {
+                Serial.println("[+] Proses Dihentikan (Long Rotary Button)");
+                deleted_process();
+                if (eTaskGetState(motor_handle) != eDeleted && eTaskGetState(motor_handle) != eBlocked)
+                    vTaskDelete(motor_handle);
+                process_state = 2;
+                screen_state = 0;
+                break;
+            } else if (ret_state == ROTARY_BUTTON) {
+                if (eTaskGetState(motor_handle) == eSuspended) {
+                    Serial.println("[+] Proses Dilanjutkan (ROTARY_BUTTON)");
+                    process_state = 0;
+                    vTaskResume(motor_handle);
+                    // } else if (eTaskGetState(motor_handle) == eRunning) {
+                } else {
+                    Serial.println("[+] Proses Dijeda (ROTARY_BUTTON)");
+                    process_state = 1;
+                    vTaskSuspend(motor_handle);
+                }
+            }
 
-    //     } while (eTaskGetState(motor_handle) != eDeleted);
-    //     screen_state = 0;
-    //     Serial.println("[+] Proses Selesai");
-    //     cycle_config_history(configuration_history, crimp_configuration, &history_length);
-    //     save_config(history_length);
-    // } else if (screen_state == 4) {
-    //     int motor_type = 0;
-    //     int selector_position = current_selector_position;
-    //     int steps = motor_cutter_steps;
-    //     int ret;
+        } while (eTaskGetState(motor_handle) != eDeleted);
+        screen_state = 0;
+        Serial.println("[+] Proses Selesai");
+        cycle_config_history(configuration_history, crimp_configuration, &history_length);
+        save_config(history_length);
+    } else if (screen_state == 4) {
+        int motor_type = 0;
+        int selector_position = current_selector_position;
+        int steps = motor_cutter_steps;
+        int ret;
 
-    //     do {
-    //         ret = test_motor_display(motor_type, steps);
-    //         if (ret == ROTARY_LEFT) {
-    //             if (motor_type == 0) {
-    //                 move_motor(MOTOR_CUTTER, -1);
-    //             } else if (motor_type == 1) {
-    //                 // move_motor(MOTOR_SELECTOR, -1);
-    //                 change_selector(current_selector_position - 1);
-    //             } else if (motor_type == 2) {
-    //                 move_motor(MOTOR_FEEDER, -1);
-    //                 if (check_proximity_sensor()) {
-    //                     do {
-    //                         move_motor(MOTOR_FEEDER, -1);
+        do {
+            ret = test_motor_display(motor_type, steps);
+            if (ret == ROTARY_LEFT) {
+                if (motor_type == 0) {
+                    move_motor(MOTOR_CUTTER, -5);
+                } else if (motor_type == 1) {
+                    // move_motor(MOTOR_SELECTOR, -1);
+                    change_selector(current_selector_position - 1);
+                } else if (motor_type == 2) {
+                    move_motor(MOTOR_FEEDER, -10);
+                }
+                // Serial.println("[+] Motor Type: " + String(motor_type));
+                // Serial.println("[+] Steps: --" + String(steps));
+            } else if (ret == ROTARY_RIGHT) {
+                if (motor_type == 0) {
+                    move_motor(MOTOR_CUTTER, 5);
+                } else if (motor_type == 1) {
+                    change_selector(current_selector_position + 1);
+                } else if (motor_type == 2) {
+                    move_motor(MOTOR_FEEDER, 10);
+                }
+                // Serial.println("[+] Motor Type: " + String(motor_type));
+                // Serial.println("[+] Steps: ++" + String(steps));
+            } else if (ret == ROTARY_BUTTON) {
+                motor_type++;
+                if (motor_type > 2) {
+                    motor_type = 0;
+                }
+            } else if (ret == LONG_ROTARY_BUTTON) {
+                screen_state = 0;
+                break;
+            }
 
-    //                     } while (check_proximity_sensor());
-    //                     move_motor(MOTOR_FEEDER, -30);  // Tarik mundur feeder motor 30mm
-    //                 }
-    //             }
-    //             // Serial.println("[+] Motor Type: " + String(motor_type));
-    //             // Serial.println("[+] Steps: --" + String(steps));
-    //         } else if (ret == ROTARY_RIGHT) {
-    //             if (motor_type == 0) {
-    //                 move_motor(MOTOR_CUTTER, 1);
-    //             } else if (motor_type == 1) {
-    //                 change_selector(current_selector_position - 1);
-    //             } else if (motor_type == 2) {
-    //                 move_motor(MOTOR_FEEDER, -1);
-    //                 if (check_proximity_sensor()) {
-    //                     do {
-    //                         move_motor(MOTOR_FEEDER, -1);
+            if (motor_type == 0) {
+                steps = motor_cutter_steps;
+            } else if (motor_type == 1) {
+                steps = current_selector_position;
+            } else if (motor_type == 2) {
+                steps = 0;
+            }
 
-    //                     } while (check_proximity_sensor());
-    //                     move_motor(MOTOR_FEEDER, -30);  // Tarik mundur feeder motor 30mm
-    //                 }
-    //             }
-    //             // Serial.println("[+] Motor Type: " + String(motor_type));
-    //             // Serial.println("[+] Steps: ++" + String(steps));
-    //         } else if (ret == ROTARY_BUTTON) {
-    //             motor_type++;
-    //             if (motor_type > 2) {
-    //                 motor_type = 0;
-    //             }
-    //         } else if (ret == LONG_ROTARY_BUTTON) {
-    //             screen_state = 0;
-    //             break;
-    //         }
+        } while (true);
+        /* Reset Motor Position */
+        xTaskCreate([](void *pvParameters) {
+            // kalibrasi cutter sek
 
-    //         if (motor_type == MOTOR_CUTTER) {
-    //             steps = motor_cutter_steps;
-    //         } else if (motor_type == MOTOR_SELECTOR) {
-    //             steps = current_selector_position;
-    //         } else if (motor_type == MOTOR_FEEDER) {
-    //             steps = 0;
-    //         }
+            // Save Posisi Selector
+            // Check ae nek step selector e berubah iku di set flag
+            // nek onok kabel seng metu tarik disek
+            // balik nak posisi selector awal ta iso langsung reset ae
+            // iku ae nek setiap ganti nak kontrol selector, feeder e narik kabel iso disurung sek sampek nemu proximity ne
+            reset_selector();
+            reset_cutter();
+            reset_feeder();
+            vTaskDelete(NULL);
+        },
+                    "Reset Position", 1024, NULL, 1, &motor_handle);
+        do {
+            gear(48, 15, 32, 32, 5);
+        } while (eTaskGetState(motor_handle) != eDeleted);
 
-    //         //     } while (true);
-    //         //     /* Reset Motor Position */
-    //         //     xTaskCreate([]() {
-    //         //         // kalibrasi cutter sek
-
-    //         //         // Save Posisi Selector
-    //         //         // Check ae nek step selector e berubah iku di set flag
-    //         //         // nek onok kabel seng metu tarik disek
-    //         //         // balik nak posisi selector awal ta iso langsung reset ae
-    //         //         // iku ae nek setiap ganti nak kontrol selector, feeder e narik kabel iso disurung sek sampek nemu proximity ne
-    //         //         reset_selector();
-    //         //         reset_cutter();
-    //         //         reset_feeder();
-    //         //         vTaskDelete(NULL);
-    //         //     },
-    //         //                 "Reset Position", 1024, NULL, 1, &motor_handle);
-    //         //     do {
-    //         //         gear(48, 15, 32, 32, 5);
-    //     } while (eTaskGetState(motor_handle) != eDeleted);
-
-    //     screen_state = 0;
-    // }
-    // motor_handle = NULL;
+        screen_state = 0;
+    }
+    motor_handle = NULL;
 }

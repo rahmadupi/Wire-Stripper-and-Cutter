@@ -14,10 +14,10 @@ void IRAM_ATTR selector_limit() {
 }
 
 const double cutter_steps_mm_per_step = 0.04;
-const double feeder_mm_per_step = 0.1123;
-const double selector_steps_per_position = 40 / 1.8;
+const double feeder_mm_per_step = 200 / 22.75;
+const double selector_steps_per_position = 43 / 1.8;
 const int max_selector_position = 5;
-const int idle_cutter_pos = 10;
+const int idle_cutter_pos = 5;
 
 int motor_cutter_steps = 0;
 int motor_cutter_pos_mm = 0;
@@ -25,13 +25,13 @@ int motor_selector_steps = 0;
 
 int current_selector_position = 1;
 
-int mm_to_steps(motor_t motor, int mm) {
+int mm_to_steps(motor_t motor, double mm) {
     switch (motor) {
         case MOTOR_CUTTER:
-            return (int)(mm * cutter_steps_mm_per_step);
+            return (int)(mm / cutter_steps_mm_per_step);
             break;
         case MOTOR_FEEDER:
-            return (int)(mm / feeder_mm_per_step);
+            return (int)(mm * feeder_mm_per_step);
             break;
 
         default:
@@ -64,7 +64,8 @@ int move_motor(motor_t motor, int steps) {
         // motor_cutter.move(steps);
         motor_cutter.move(steps);
         while (motor_cutter.distanceToGo() != 0) {
-            if (limiter(CUTTER_LIMITER, motor_cutter_steps, steps)) {
+            if (limiter(CUTTER_LIMITER) && steps > 0) {
+                // if (false) {
                 motor_cutter.stop();
                 Serial.println("[!] Cutter limiter triggered");
                 for (int i = 0; i < 10; i++) {
@@ -77,60 +78,17 @@ int move_motor(motor_t motor, int steps) {
                 motor_cutter.setCurrentPosition(0);
                 motor_cutter_steps = 0;
                 motor_cutter_pos_mm = 0;
+                move_cutter(-5.0);
                 return LIMIT;
             }
             motor_cutter.run();
         }
-
-        // int increment = steps < 0 ? -1 : 1;
-        // do {
-        //     if ((limiter(CUTTER_LIMITER, motor_cutter_steps, steps))) {
-        //         Serial.println("[!] Cutter limiter triggered");
-        //         for (int i = 0; i < 10; i++) {
-        //             digitalWrite(LED_BUILTIN, HIGH);
-        //             delay(10);
-        //             digitalWrite(LED_BUILTIN, LOW);
-        //             delay(10);
-        //         }
-        //         return LIMIT;
-        //     }
-        //     motor_cutter.move(increment);
-        //     motor_cutter_steps += increment;
-        //     if (steps < 0) {
-        //         steps++;
-        //     } else {
-        //         steps--;
-        //     }
-        //     delay(1);
-        // } while (steps);
         Serial.println("[+] Motor Cutter Steps: " + String(motor_cutter_steps));
         return CLEAR;
     } else if (motor == MOTOR_SELECTOR) {
-        // int steps = mm_to_steps(motor, distance);
-        // int increment = steps < 0 ? -1 : 1;
-        // do {
-        //     if ((limiter(SELECTOR_LIMITER, motor_selector_steps, steps))) {
-        //         Serial.println("[!] Selector limiter triggered");
-        //         for (int i = 0; i < 10; i++) {
-        //             digitalWrite(LED_BUILTIN, HIGH);
-        //             delay(10);
-        //             digitalWrite(LED_BUILTIN, LOW);
-        //             delay(10);
-        //         }
-        //         return LIMIT;
-        //     }
-        //     motor_selector.move(increment);
-        //     motor_selector.run();
-        //     motor_selector_steps += increment;
-        //     if (steps < 0) {
-        //         steps++;
-        //     } else {
-        //         steps--;
-        //     }
-        // } while (steps);
         motor_selector.move(steps);
         while (motor_selector.distanceToGo() != 0) {
-            if (limiter(SELECTOR_LIMITER, motor_selector_steps, steps)) {
+            if (!digitalRead(PIN_DANCOK) && steps < 0) {
                 motor_selector.stop();
                 Serial.println("[!] Selector limiter triggered");
                 for (int i = 0; i < 10; i++) {
@@ -139,7 +97,6 @@ int move_motor(motor_t motor, int steps) {
                     digitalWrite(LED_BUILTIN, LOW);
                     delay(10);
                 }
-                motor_selector.setCurrentPosition(0);
                 motor_selector_steps = 0;
                 current_selector_position = 1;
                 return LIMIT;
@@ -166,24 +123,28 @@ int move_motor(motor_t motor, int steps) {
 }
 
 void change_selector(int position) {
-    if (position < 1 || position >= max_selector_position) {
+    if (position < 1 || position > max_selector_position) {
         Serial.println("[!] Invalid selector position");
         return;
     }
-    int steps = (current_selector_position - position) * selector_steps_per_position;
+    int steps = ((position - current_selector_position) * selector_steps_per_position);
     move_motor(MOTOR_SELECTOR, steps);
     current_selector_position = position;
 }
 
-void move_cutter(int mm) {
+void move_cutter(double mm) {
+    Serial.print("[+] Moving cutter to position: ");
+    Serial.println(mm);
     // Move cutter motor to the specified position in mm
     int steps = mm_to_steps(MOTOR_CUTTER, mm);
     move_motor(MOTOR_CUTTER, steps);
-    motor_cutter_pos_mm += mm;
-    motor_cutter_steps += steps;
+    motor_cutter_pos_mm += (mm);
+    Serial.print("[+] Current cutter position in mm: ");
+    Serial.println(motor_cutter_pos_mm);
+    motor_cutter_steps += steps;  // Update current cutter position
 }
 
-void move_feeder(int mm) {
+void move_feeder(double mm) {
     // Move feeder motor to the specified position in mm
     int steps = mm_to_steps(MOTOR_FEEDER, mm);
     move_motor(MOTOR_FEEDER, steps);
@@ -197,49 +158,52 @@ void motor_startup(void *pvParameters) {
     reset_selector();  // Reset selector position
     reset_cutter();    // Reset cutter position
 
-    // move_motor(MOTOR_CUTTER, 10);  // Munggah cutter 10mm
-    move_cutter(10);  // Munggah cutter 10mm
-
     // kalibrasi cutter drop terus munggah 10 cm 10mm 10/0.04
-    Serial.println("Selesai");
+    // Serial.println("Selesai");
 
     vTaskDelete(NULL);
 }
 
-void strip_wire(int thickness) {
+void strip_wire(double thickness) {  // copper thickness
     // Implement wire stripping logic based on thickness
     // This is a placeholder function
     Serial.print("[+] Stripping wire with thickness: ");
     Serial.println(thickness);
-    move_cutter(idle_cutter_pos - thickness);
-    move_cutter((idle_cutter_pos - thickness) * -1);
+    Serial.println("Strip");
+    thickness = thickness / 10;
+                // move_cutter((abs((double)motor_cutter_pos_mm) - thickness));
+                move_cutter(idle_cutter_pos - (thickness)-0.6);  // Munggah cutter 5mm - thickness
+    Serial.println("[+] Wire stripped, moving cutter back");
+    // move_cutter((((double)motor_cutter_pos_mm) * -1));
+    move_cutter(-idle_cutter_pos + (thickness) + 0.6);  // Munggah cutter 5mm
 }
 
 void cut_wire() {
     // Implement wire cutting logic
     // This is a placeholder function
-    move_cutter(idle_cutter_pos);
-    move_cutter(-idle_cutter_pos);
+    // move_cutter(idle_cutter_pos);
+    // move_cutter(-idle_cutter_pos);
+    reset_cutter();  // Reset cutter position
 }
 
 void execute_command(void *pvParameters) {
     crimp_configuration_t *config = (crimp_configuration_t *)pvParameters;
 
-    if (check_proximity_sensor()) {
-        do {
-            move_motor(MOTOR_FEEDER, -1);
-            delay(1);
-        } while (check_proximity_sensor());
-        move_motor(MOTOR_FEEDER, -30);  // Tarik mundur feeder motor 30mm
-        Serial.println("[+] Proximity sensor triggered, moving feeder motor back");
-    }
+    reset_feeder();  // Reset feeder position
     if (current_selector_position != config->cable_type) {
         change_selector(config->cable_type);
     }
-    do {
-        move_motor(MOTOR_FEEDER, 1);
-    } while (!check_proximity_sensor());
-    move_feeder(30);
+
+    motor_feeder.move(10000);
+    while (motor_feeder.distanceToGo() != 0) {
+        if (check_proximity_sensor()) {
+            motor_feeder.stop();
+            break;
+        }
+        motor_feeder.run();
+    }
+    // TO be managed
+    move_feeder(37.0);  // Munggah feeder 37mm
     // pilih kabel
     // Serial.println("[+] Executing command with configuration:");
     // Serial.print("Cable Type: ");
@@ -263,15 +227,17 @@ void execute_command(void *pvParameters) {
     // }
     for (int i = 0; i < config->copy_count; i++) {
         // Pull cable
-        move_feeder(config->front_end_crimp_length);
-        strip_wire(config->cable_thickness);
-        move_feeder(config->cable_length);
-        strip_wire(config->cable_thickness);
-        move_cutter(config->back_end_crimp_length);
+        move_feeder((double)config->front_end_crimp_length);
+        strip_wire((double)config->cable_thickness);
+        move_feeder((double)config->cable_length);
+        strip_wire((double)config->cable_thickness);
+        move_feeder((double)config->back_end_crimp_length);
         cut_wire();
     }
 
     reset_feeder();
+    reset_selector();
+    reset_cutter();
 
     // Reset Cutter nek perlu nak posisi 1cm teko nisor
     // Reset Feeder ambek selector e
@@ -280,37 +246,37 @@ void execute_command(void *pvParameters) {
 }
 
 void reset_selector() {
-    do {
-        move_motor(MOTOR_SELECTOR, -1);
-        delay(1);
-    } while (!limiter(SELECTOR_LIMITER));
-    motor_selector.setCurrentPosition(0);
-    current_selector_position = 0;
+    while (1) {
+        if (move_motor(MOTOR_SELECTOR, -5)) {
+            motor_selector.stop();
+            break;  // Munggah selector 5mm
+        }
+    }
+    current_selector_position = 1;
     //
-    move_motor(MOTOR_SELECTOR, (int)5 / 1.8);  // Munggah selector 10mm
+    // move_motor(MOTOR_SELECTOR, (int)5 / 1.8);  // Munggah selector 10mm
     motor_selector_steps = 0;
-    motor_selector.setCurrentPosition(0);
-    // balik ke posisi 0;
-    // move_motor(MOTOR_SELECTOR, 10);
 }
 void reset_cutter() {
-    do {
-        move_motor(MOTOR_CUTTER, -1);
-        delay(1);
-    } while (!limiter(CUTTER_LIMITER));
-    motor_cutter.setCurrentPosition(0);
-    motor_cutter_steps = 0;
-    motor_cutter_pos_mm = 0;
+    // do {
+    // } while (!move_motor(MOTOR_CUTTER, 10));
+    // motor_cutter.setCurrentPosition(0);
+    move_motor(MOTOR_CUTTER, mm_to_steps(MOTOR_CUTTER, 30.0));  // Munggah cutter 30mm
+    // motor_cutter_pos_mm = abs(motor_cutter_pos_mm);
 }
 void reset_feeder() {
     // Cek onok kabel seng metu tagak Check sensor induksi ne
     // Nek onok kabel seng metu, tarik mundur pirang pirang senti
     if (check_proximity_sensor()) {
-        // Tarik mundur feeder motor
-        do {
-            move_motor(MOTOR_FEEDER, -1);
-            delay(1);
-        } while (check_proximity_sensor());
-        move_motor(MOTOR_FEEDER, -30);  // Tarik mundur feeder motor 30mm
+        motor_feeder.move(-10000);
+        while (motor_feeder.distanceToGo() != 0) {
+            motor_feeder.run();
+            if (!check_proximity_sensor()) {
+                motor_feeder.stop();
+                break;
+            }
+        }
+        // move_motor(MOTOR_FEEDER, -30);  // Tarik mundur feeder motor 30mm
+        move_feeder(-34.0);  // Tarik mundur feeder motor 34mm
     }
 }
