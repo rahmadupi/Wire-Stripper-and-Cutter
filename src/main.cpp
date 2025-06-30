@@ -60,6 +60,10 @@ void cycle_config_history(crimp_configuration_t *configuration_history,
     Serial.println("[+] Cycle configuration history");
     memcpy(configuration_history + 1, configuration_history, sizeof(crimp_configuration_t));
     mempcpy(configuration_history, &current_config, sizeof(crimp_configuration_t));
+
+    for (int i = 0; i < 5; i++) {
+        digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+    }
 }
 
 void load_config(int *history_length, crimp_configuration_t *configuration_history) {
@@ -130,6 +134,10 @@ void save_config(int history_length) {
     serializeJsonPretty(doc, file);
     file.close();
     Serial.println("Config saved to SPIFFS.");
+
+    for (int i = 0; i < 5; i++) {
+        digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+    }
 }
 
 void setup() {
@@ -158,8 +166,8 @@ void setup() {
 
     motor_cutter.setMaxSpeed(1000);
     motor_cutter.setAcceleration(500);
-    motor_selector.setMaxSpeed(1000);
-    motor_selector.setAcceleration(500);
+    motor_selector.setMaxSpeed(500);
+    motor_selector.setAcceleration(250);
     motor_feeder.setMaxSpeed(1000);
     motor_feeder.setAcceleration(500);
 
@@ -174,7 +182,7 @@ void setup() {
     Serial.println("[+] Melakukan Konfigurasi alat...");
     startup_display();
 
-    xTaskCreate(motor_startup, "Motor Startup", 1024, NULL, 1, &motor_handle);
+    xTaskCreate(motor_startup, "Motor Startup", 5000, NULL, 2, &motor_handle);
     do {
         gear(48, 15, 32, 32, 5);
     } while (eTaskGetState(motor_handle) != eDeleted);
@@ -222,36 +230,41 @@ void loop() {
     // Proses
     else if (screen_state == 3) {
         Serial.println("[+] Proses dimulai");
-        xTaskCreate(execute_command, "Execute Command", 2048, &crimp_configuration, 1, &motor_handle);
-        int process_state = 0;
-        do {
-            int ret_state = processing_display(process_state);
-            if (ret_state == LONG_ROTARY_BUTTON) {
-                Serial.println("[+] Proses Dihentikan (Long Rotary Button)");
-                deleted_process();
-                if (eTaskGetState(motor_handle) != eDeleted && eTaskGetState(motor_handle) != eBlocked)
-                    vTaskDelete(motor_handle);
-                process_state = 2;
-                screen_state = 0;
-                break;
-            } else if (ret_state == ROTARY_BUTTON) {
-                if (eTaskGetState(motor_handle) == eSuspended) {
-                    Serial.println("[+] Proses Dilanjutkan (ROTARY_BUTTON)");
-                    process_state = 0;
-                    vTaskResume(motor_handle);
-                    // } else if (eTaskGetState(motor_handle) == eRunning) {
-                } else {
-                    Serial.println("[+] Proses Dijeda (ROTARY_BUTTON)");
-                    process_state = 1;
-                    vTaskSuspend(motor_handle);
-                }
-            }
+        processing_display(0);
+        execute_command_seq(&crimp_configuration);
+        // xTaskCreate(execute_command, "Execute Command", 25000, &crimp_configuration, 3, &motor_handle);
+        // int process_state = 0;
+        // do {
+        //     int ret_state = processing_display(process_state);
+        //     if (ret_state == LONG_ROTARY_BUTTON) {
+        //         Serial.println("[+] Proses Dihentikan (Long Rotary Button)");
+        //         deleted_process();
+        //         if (eTaskGetState(motor_handle) != eDeleted && eTaskGetState(motor_handle) != eBlocked)
+        //             vTaskDelete(motor_handle);
+        //         process_state = 2;
+        //         screen_state = 0;
+        //         break;
+        //     } else if (ret_state == ROTARY_BUTTON) {
+        //         if (eTaskGetState(motor_handle) == eSuspended) {
+        //             Serial.println("[+] Proses Dilanjutkan (ROTARY_BUTTON)");
+        //             process_state = 0;
+        //             vTaskResume(motor_handle);
+        //             // } else if (eTaskGetState(motor_handle) == eRunning) {
+        //         } else {
+        //             Serial.println("[+] Proses Dijeda (ROTARY_BUTTON)");
+        //             process_state = 1;
+        //             vTaskSuspend(motor_handle);
+        //         }
+        //     }
 
-        } while (eTaskGetState(motor_handle) != eDeleted);
+        // } while (eTaskGetState(motor_handle) != eDeleted);
         screen_state = 0;
         Serial.println("[+] Proses Selesai");
         cycle_config_history(configuration_history, crimp_configuration, &history_length);
         save_config(history_length);
+        for (int i = 0; i < 5; i++) {
+            digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+        }
     } else if (screen_state == 4) {
         int motor_type = 0;
         int selector_position = current_selector_position;

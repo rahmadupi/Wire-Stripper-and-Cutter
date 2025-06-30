@@ -14,8 +14,8 @@ void IRAM_ATTR selector_limit() {
 }
 
 const double cutter_steps_mm_per_step = 0.04;
-const double feeder_mm_per_step = 200 / 22.75;
-const double selector_steps_per_position = 43 / 1.8;
+const double feeder_mm_per_step = 200 / 21.00;
+const double selector_steps_per_position = (40 / 1.8) * 16;
 const int max_selector_position = 5;
 const int idle_cutter_pos = 5;
 
@@ -129,6 +129,10 @@ void change_selector(int position) {
     }
     int steps = ((position - current_selector_position) * selector_steps_per_position);
     move_motor(MOTOR_SELECTOR, steps);
+    if (current_selector_position == 1) {
+        move_motor(MOTOR_SELECTOR, -1 * selector_steps_per_position);  // Munggah selector 5mm
+    }
+
     current_selector_position = position;
 }
 
@@ -171,11 +175,11 @@ void strip_wire(double thickness) {  // copper thickness
     Serial.println(thickness);
     Serial.println("Strip");
     thickness = thickness / 10;
-                // move_cutter((abs((double)motor_cutter_pos_mm) - thickness));
-                move_cutter(idle_cutter_pos - (thickness)-0.6);  // Munggah cutter 5mm - thickness
+    // move_cutter((abs((double)motor_cutter_pos_mm) - thickness));
+    move_cutter(idle_cutter_pos - (thickness)-0.2);  // Munggah cutter 5mm - thickness
     Serial.println("[+] Wire stripped, moving cutter back");
     // move_cutter((((double)motor_cutter_pos_mm) * -1));
-    move_cutter(-idle_cutter_pos + (thickness) + 0.6);  // Munggah cutter 5mm
+    move_cutter(-idle_cutter_pos + (thickness) + 0.2);  // Munggah cutter 5mm
 }
 
 void cut_wire() {
@@ -194,6 +198,8 @@ void execute_command(void *pvParameters) {
         change_selector(config->cable_type);
     }
 
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+
     motor_feeder.move(10000);
     while (motor_feeder.distanceToGo() != 0) {
         if (check_proximity_sensor()) {
@@ -203,7 +209,7 @@ void execute_command(void *pvParameters) {
         motor_feeder.run();
     }
     // TO be managed
-    move_feeder(37.0);  // Munggah feeder 37mm
+    move_feeder(29.0);  // Munggah feeder 29mm
     // pilih kabel
     // Serial.println("[+] Executing command with configuration:");
     // Serial.print("Cable Type: ");
@@ -225,14 +231,21 @@ void execute_command(void *pvParameters) {
     //     test--;
     //     Serial.println(test);
     // }
+    vTaskDelay(100 / portTICK_PERIOD_MS);
     for (int i = 0; i < config->copy_count; i++) {
         // Pull cable
         move_feeder((double)config->front_end_crimp_length);
+        vTaskDelay(50 / portTICK_PERIOD_MS);
         strip_wire((double)config->cable_thickness);
+        vTaskDelay(50 / portTICK_PERIOD_MS);
         move_feeder((double)config->cable_length);
+        vTaskDelay(50 / portTICK_PERIOD_MS);
         strip_wire((double)config->cable_thickness);
+        vTaskDelay(50 / portTICK_PERIOD_MS);
         move_feeder((double)config->back_end_crimp_length);
+        vTaskDelay(50 / portTICK_PERIOD_MS);
         cut_wire();
+        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 
     reset_feeder();
@@ -245,16 +258,82 @@ void execute_command(void *pvParameters) {
     vTaskDelete(NULL);
 }
 
+void execute_command_seq(crimp_configuration_t *config) {
+    // crimp_configuration_t *config = (crimp_configuration_t *)config;
+
+    reset_feeder();  // Reset feeder position
+    if (current_selector_position != config->cable_type) {
+        change_selector(config->cable_type);
+    }
+
+    // vTaskDelay(100 / portTICK_PERIOD_MS);
+
+    motor_feeder.move(10000);
+    while (motor_feeder.distanceToGo() != 0) {
+        if (check_proximity_sensor()) {
+            motor_feeder.stop();
+            break;
+        }
+        motor_feeder.run();
+    }
+    // TO be managed
+    move_feeder(33.0);  // Munggah feeder 33mm
+    // pilih kabel
+    // Serial.println("[+] Executing command with configuration:");
+    // Serial.print("Cable Type: ");
+    // Serial.println(config->cable_type);
+    // Serial.print("Cable Thickness: ");
+    // Serial.println(config->cable_thickness);
+    // Serial.print("Cable Length: ");
+    // Serial.println(config->cable_length);
+    // Serial.print("Front End Crimp Length: ");
+    // Serial.println(config->front_end_crimp_length);
+    // Serial.print("Back End Crimp Length: ");
+    // Serial.println(config->back_end_crimp_length);
+    // Serial.print("Copy Count: ");
+    // Serial.println(config->copy_count);
+    // // delay(20000);
+    // // vTaskDelay(20000 / portTICK_PERIOD_MS);  // Simulate processing time
+    // int test = 20000;
+    // while (test) {
+    //     test--;
+    //     Serial.println(test);
+    // }
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+    for (int i = 0; i < config->copy_count; i++) {
+        // Pull cable
+        move_feeder((double)config->front_end_crimp_length);
+        // vTaskDelay(50 / portTICK_PERIOD_MS);
+        strip_wire((double)config->cable_thickness);
+        // vTaskDelay(50 / portTICK_PERIOD_MS);
+        move_feeder((double)config->cable_length);
+        // vTaskDelay(50 / portTICK_PERIOD_MS);
+        strip_wire((double)config->cable_thickness);
+        // vTaskDelay(50 / portTICK_PERIOD_MS);
+        move_feeder((double)config->back_end_crimp_length);
+        // vTaskDelay(50 / portTICK_PERIOD_MS);
+        cut_wire();
+        // vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+
+    reset_feeder();
+    reset_selector();
+    reset_cutter();
+
+    // Reset Cutter nek perlu nak posisi 1cm teko nisor
+    // Reset Feeder ambek selector e
+
+    // vTaskDelete(NULL);
+}
+
 void reset_selector() {
     while (1) {
-        if (move_motor(MOTOR_SELECTOR, -5)) {
+        if (move_motor(MOTOR_SELECTOR, -10000)) {
             motor_selector.stop();
             break;  // Munggah selector 5mm
         }
     }
     current_selector_position = 1;
-    //
-    // move_motor(MOTOR_SELECTOR, (int)5 / 1.8);  // Munggah selector 10mm
     motor_selector_steps = 0;
 }
 void reset_cutter() {

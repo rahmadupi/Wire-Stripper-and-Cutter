@@ -50,6 +50,7 @@ extern AccelStepper motor_feeder;
 int limiter(limiter_t type, int current_step = 200, int target_step = 0);
 void motor_startup(void *pvParameters);
 void execute_command(void *pvParameters);
+void execute_command_seq(crimp_configuration_t *config);
 
 int move_motor(motor_t motor, int steps);
 int mm_to_steps(motor_t motor, double mm);
